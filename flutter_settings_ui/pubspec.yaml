@@ -1,0 +1,16 @@
+name: flutter_settings_ui
+description: Create native settings for Flutter app in minutes. Fork of settings_ui.
+version: 3.0.1
+homepage: https://github.com/juliansteenbakker/flutter_settings_ui
+
+environment:
+  sdk: '>=2.12.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lint: 2.2.0
