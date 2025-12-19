@@ -1,4 +1,5 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
+import 'package:adaptive_dialog/src/action_callback.dart';
 import 'package:adaptive_dialog/src/extensions/extensions.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
@@ -18,7 +19,10 @@ class IOSTextInputDialog extends StatefulWidget {
     required this.canPop,
     required this.onPopInvokedWithResult,
     this.autoSubmit = false,
+    this.onSubmit,
+    this.onCancel,
   });
+
   @override
   State<IOSTextInputDialog> createState() => _IOSTextInputDialogState();
 
@@ -33,6 +37,8 @@ class IOSTextInputDialog extends StatefulWidget {
   final bool canPop;
   final PopInvokedWithResultCallback<List<String>?>? onPopInvokedWithResult;
   final bool autoSubmit;
+  final OnTextInputSubmit? onSubmit;
+  final VoidCallback? onCancel;
 }
 
 class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
@@ -65,22 +71,37 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final navigator = Navigator.of(
+    final navigator = Navigator.maybeOf(
       context,
       rootNavigator: widget.useRootNavigator,
     );
     final title = widget.title;
     final message = widget.message;
-    void submit() => navigator.pop(
-          _textControllers.map((c) => c.text).toList(),
+    void submit() {
+      final values = _textControllers.map((c) => c.text).toList();
+      if (widget.onSubmit != null) {
+        widget.onSubmit?.call(values);
+      } else {
+        navigator?.pop(
+          values,
         );
+      }
+    }
+
     void submitIfValid() {
       if (_validate()) {
         submit();
       }
     }
 
-    void cancel() => navigator.pop();
+    void cancel() {
+      if (widget.onCancel != null) {
+        widget.onCancel?.call();
+      } else {
+        navigator?.pop();
+      }
+    }
+
     BoxDecoration borderDecoration({
       required bool isTopRounded,
       required bool isBottomRounded,
@@ -123,7 +144,7 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
             if (message != null) Text(message),
             const SizedBox(height: 22),
             ..._textControllers.mapIndexed(
-              (i, c) {
+                  (i, c) {
                 final isLast = widget.textFields.length == i + 1;
                 final field = widget.textFields[i];
                 final prefixText = field.prefixText;
@@ -140,6 +161,7 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
                   minLines: field.minLines,
                   maxLines: field.maxLines,
                   autocorrect: field.autocorrect,
+                  enabled: field.enabled,
                   prefix: prefixText == null ? null : Text(prefixText),
                   suffix: suffixText == null ? null : Text(suffixText),
                   decoration: borderDecoration(
@@ -178,9 +200,9 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
             isDefaultAction: true,
             child: Text(
               widget.cancelLabel ??
-                  MaterialLocalizations.of(context)
-                      .cancelButtonLabel
-                      .capitalizedForce,
+                  MaterialLocalizations.of(
+                    context,
+                  ).cancelButtonLabel.capitalizedForce,
             ),
           ),
           CupertinoDialogAction(
@@ -201,10 +223,12 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
 
   bool _validate() {
     _autovalidate = true;
-    final validations = widget.textFields.mapIndexed((i, tf) {
+    final validations = widget.textFields
+        .mapIndexed((i, tf) {
       final validator = tf.validator;
       return validator == null ? null : validator(_textControllers[i].text);
-    }).where((result) => result != null);
+    })
+        .where((result) => result != null);
     setState(() {
       _validationMessage = validations.isEmpty ? null : validations.join('\n');
     });
@@ -217,13 +241,12 @@ class _IOSTextInputDialogState extends State<IOSTextInputDialog> {
 /// SystemContextMenuがサポートされている場合はそれを利用したネイティブUIで、
 /// それ以外の時は無指定の時と同じ挙動
 Widget _contextMenuBuilder(
-  BuildContext context,
-  EditableTextState editableTextState,
-) =>
-    SystemContextMenu.isSupported(context)
-        ? SystemContextMenu.editableText(
-            editableTextState: editableTextState,
-          )
-        : AdaptiveTextSelectionToolbar.editableText(
-            editableTextState: editableTextState,
-          );
+    BuildContext context,
+    EditableTextState editableTextState,
+    ) => SystemContextMenu.isSupported(context)
+    ? SystemContextMenu.editableText(
+  editableTextState: editableTextState,
+)
+    : AdaptiveTextSelectionToolbar.editableText(
+  editableTextState: editableTextState,
+);

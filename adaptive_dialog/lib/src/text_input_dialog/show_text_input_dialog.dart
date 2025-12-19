@@ -131,6 +131,7 @@ class DialogTextField {
     this.maxLines = 1,
     this.maxLength,
     this.autocorrect = true,
+    this.enabled = true,
     this.spellCheckConfiguration,
   });
   final String? initialText;
@@ -145,5 +146,6 @@ class DialogTextField {
   final int maxLines;
   final int? maxLength;
   final bool autocorrect;
+  final bool enabled;
   final SpellCheckConfiguration? spellCheckConfiguration;
 }

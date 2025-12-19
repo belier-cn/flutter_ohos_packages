@@ -1,4 +1,5 @@
 import 'package:adaptive_dialog/adaptive_dialog.dart';
+import 'package:adaptive_dialog/src/action_callback.dart';
 import 'package:adaptive_dialog/src/extensions/extensions.dart';
 import 'package:adaptive_dialog/src/helper/macos_draggable_dialog.dart';
 import 'package:collection/collection.dart';
@@ -21,6 +22,8 @@ class MacOSTextInputDialog extends StatefulWidget {
     required this.canPop,
     required this.onPopInvokedWithResult,
     this.autoSubmit = false,
+    this.onSubmit,
+    this.onCancel,
   });
   @override
   State<MacOSTextInputDialog> createState() => _MacOSTextInputDialogState();
@@ -36,6 +39,8 @@ class MacOSTextInputDialog extends StatefulWidget {
   final bool canPop;
   final PopInvokedWithResultCallback<List<String>?>? onPopInvokedWithResult;
   final bool autoSubmit;
+  final OnTextInputSubmit? onSubmit;
+  final VoidCallback? onCancel;
 }
 
 class _MacOSTextInputDialogState extends State<MacOSTextInputDialog> {
@@ -69,13 +74,20 @@ class _MacOSTextInputDialogState extends State<MacOSTextInputDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final navigator = Navigator.of(
+    final navigator = Navigator.maybeOf(
       context,
       rootNavigator: widget.useRootNavigator,
     );
-    void submit() => navigator.pop(
-          _textControllers.map((c) => c.text).toList(),
+    void submit() {
+      final values = _textControllers.map((c) => c.text).toList();
+      if (widget.onSubmit != null) {
+        widget.onSubmit?.call(values);
+      } else {
+        navigator?.pop(
+          values,
         );
+      }
+    }
     void submitIfValid() {
       if (_validate()) {
         submit();
@@ -85,7 +97,13 @@ class _MacOSTextInputDialogState extends State<MacOSTextInputDialog> {
     final validationMessage = _validationMessage;
     final title = widget.title;
     final message = widget.message;
-    void cancel() => navigator.pop();
+    void cancel() {
+      if (widget.onCancel != null) {
+        widget.onCancel?.call();
+      } else {
+        navigator?.pop();
+      }
+    }
     final icon = AdaptiveDialog.instance.macOS.applicationIcon;
     return MacosDraggableDialog(
       child: Padding(
@@ -127,7 +145,7 @@ class _MacOSTextInputDialogState extends State<MacOSTextInputDialog> {
                     ),
                   const SizedBox(height: 8),
                   ..._textControllers.mapIndexed<Widget>(
-                    (i, c) {
+                        (i, c) {
                       final isLast = widget.textFields.length == i + 1;
                       final field = widget.textFields[i];
                       final prefixText = field.prefixText;
@@ -146,12 +164,13 @@ class _MacOSTextInputDialogState extends State<MacOSTextInputDialog> {
                             maxLines: field.maxLines,
                             maxLength: field.maxLength,
                             autocorrect: field.autocorrect,
+                            enabled: field.enabled,
                             prefix:
-                                prefixText == null ? null : Text(prefixText),
+                            prefixText == null ? null : Text(prefixText),
                             suffix:
-                                suffixText == null ? null : Text(suffixText),
+                            suffixText == null ? null : Text(suffixText),
                             textInputAction:
-                                isLast ? null : TextInputAction.next,
+                            isLast ? null : TextInputAction.next,
                             onSubmitted: isLast && widget.autoSubmit
                                 ? (_) => submitIfValid()
                                 : null,
